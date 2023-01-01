@@ -9,7 +9,7 @@ import { IConsoleFeeManager } from "./interfaces/IConsoleFeeManager.sol";
  * @title ConsoleFeeManager
  * @author https://github.com/chirag-bgh
  */
-contract ConsoleFeeRegistry is IConsoleFeeRegistry, OwnableRoles {
+contract ConsoleFeeManager is IConsoleFeeManager, OwnableRoles {
    
     /**
      * @dev This is the denominator, in basis points (BPS), for platform fees.
@@ -35,29 +35,20 @@ contract ConsoleFeeRegistry is IConsoleFeeRegistry, OwnableRoles {
         _initializeOwner(msg.sender);
     }
 
-    /**
-     * @inheritdoc IConsoleFeeRegistry
-     */
-    function setConsoleFeeAddress(address ConsoleFeeAddress_)
+    function setConsoleFeeAddress(address consoleFeeAddress_)
         external
         onlyOwner
-        onlyValidConsoleFeeAddress(ConsoleFeeAddress_)
+        onlyValidConsoleFeeAddress(consoleFeeAddress_)
     {
-        ConsoleFeeAddress = ConsoleFeeAddress_;
-        emit ConsoleFeeAddressSet(ConsoleFeeAddress_);
+        consoleFeeAddress = consoleFeeAddress_;
+        emit consoleFeeAddressSet(consoleFeeAddress_);
     }
 
-    /**
-     * @inheritdoc IConsoleFeeRegistry
-     */
     function setPlatformFeeBPS(uint16 platformFeeBPS_) external onlyOwner onlyValidPlatformFeeBPS(platformFeeBPS_) {
         platformFeeBPS = platformFeeBPS_;
         emit PlatformFeeSet(platformFeeBPS_);
     }
 
-    /**
-     * @inheritdoc IConsoleFeeRegistry
-     */
     function platformFee(uint128 requiredEtherValue) external view returns (uint128 fee) {
         // Won't overflow, as `requiredEtherValue` is 128 bits, and `platformFeeBPS` is 16 bits.
         unchecked {
@@ -67,10 +58,10 @@ contract ConsoleFeeRegistry is IConsoleFeeRegistry, OwnableRoles {
 
     /**
      * @dev Restricts the Console fee address to be address(0).
-     * @param ConsoleFeeAddress_ The Console fee address.
+     * @param consoleFeeAddress_ The Console fee address.
      */
-    modifier onlyValidConsoleFeeAddress(address ConsoleFeeAddress_) {
-        if (ConsoleFeeAddress_ == address(0)) revert InvalidConsoleFeeAddress();
+    modifier onlyValidConsoleFeeAddress(address consoleFeeAddress_) {
+        if (consoleFeeAddress_ == address(0)) revert InvalidConsoleFeeAddress();
         _;
     }
 
