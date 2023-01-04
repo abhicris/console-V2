@@ -1,6 +1,13 @@
 ERC721A-Upgradeable/=lib/ERC721A-Upgradeable/contracts/
 ERC721A/=lib/ERC721A/contracts/
+closedsea/=lib/closedsea/src/
 ds-test/=lib/solmate/lib/ds-test/src/
+erc4626-tests/=lib/closedsea/lib/openzeppelin-contracts/lib/erc4626-tests/
+erc721a-upgradeable/=lib/closedsea/lib/erc721a-upgradeable/contracts/
+erc721a/=lib/closedsea/lib/erc721a/contracts/
 forge-std/=lib/forge-std/src/
+openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
+operator-filter-registry/=lib/closedsea/lib/operator-filter-registry/src/
 solady/=lib/solady/src/
 solmate/=lib/solmate/src/

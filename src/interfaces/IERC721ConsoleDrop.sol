@@ -23,6 +23,13 @@ interface IERC721ConsoleDrop is IERC721AUpgradeable, IERC2981Upgradeable {
      */
     event Airdropped(address[] to, uint256 quantity, uint256 fromTokenId);
 
+  /**
+   * @notice Emitted when the collection is revealed.
+   * @param baseURI The base URI for the collection.
+   * @param isRevealed Whether the collection is revealed.
+   */
+  event URIUpdated(string baseURI, bool isRevealed);
+
 
     // =============================================================
     //                            ERRORS
@@ -32,6 +39,8 @@ interface IERC721ConsoleDrop is IERC721AUpgradeable, IERC2981Upgradeable {
      * @dev No addresses to airdrop.
      */
     error NoAddressesToAirdrop();
+
+
 
    
 

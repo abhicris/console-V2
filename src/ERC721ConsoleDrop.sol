@@ -2,12 +2,14 @@
 
 pragma solidity ^0.8.17;
 
-import "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
-import "ERC721A-Upgradeable/IERC721AUpgradeable.sol";
-import "ERC721A-Upgradeable/ERC721AStorage.sol";
+import { ERC721AUpgradeable, ERC721AStorage } from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
+import { IERC721AUpgradeable } from "ERC721A-Upgradeable/IERC721AUpgradeable.sol";
+import { OperatorFilterer } from "operator-filter-registry/OperatorFilterer.sol";
+import { IERC2981Upgradeable } from "openzeppelin-contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import { OwnableRoles } from "solady/auth/OwnableRoles.sol";
 import { MintRandomnessLib } from "./utils/MintRandomnessLib.sol";
 import { IERC721ConsoleDrop } from "./interfaces/IERC721ConsoleDrop.sol";
+
 
 
 /// @title ERC721DropConsole
@@ -20,14 +22,24 @@ contract ERC721DropConsole is IERC721ConsoleDrop, OwnableRoles {
     /**
      *  @dev Access control roles
      */
-    uint256 public constant minterRole = _ROLE_1;
-    uint256 public constant adminRole = _ROLE_0;
+    uint256 public constant MINTER_ROLE = _ROLE_1;
+    uint256 public constant ADMIN_ROLE = _ROLE_0;
 
     /**
      * @dev This is the max mint batch size for the optimized ERC721A mint contract
      *      See: https://chiru-labs.github.io/ERC721A/#/tips?id=batch-size
      */
     uint256 public constant ADDRESS_BATCH_MINT_LIMIT = 255;
+
+    /**
+     * @dev Basis points denominator used in fee calculations.
+     */
+    uint16 internal constant _MAX_BPS = 10_000;
+
+    /**
+     * @dev The interface ID for EIP-2981 (royaltyInfo)
+     */
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
      /**
      * @dev The destination for ETH and ERC20 withdrawals.
@@ -40,6 +52,169 @@ contract ERC721DropConsole is IERC721ConsoleDrop, OwnableRoles {
      */
     IOperatorFilterRegistry immutable operatorFilterRegistry =
         IOperatorFilterRegistry(0x000000000000AAeB6D7670E522A718067333cd4E);
+
+    /**
+     * @notice Whether the collection is revealed or not.
+     */
+    bool public isRevealed;
+
+    /**
+     * @notice The base URI used for all NFTs in this collection.
+     * @dev The `<tokenId>.json` is appended to this to obtain an NFT's `tokenURI`.
+     *      e.g. The URI for `tokenId`: "1" with `baseURI`: "ipfs://foo/" is "ipfs://foo/1.json".
+     * @return The base URI used by this collection.
+     */
+    string public baseURI;
+
+    /**
+     * @dev contract URI for contract metadata.
+     */
+    string public contractURI;
+
+    /**
+     * @dev The randomness based on latest block hash, which is stored upon each mint
+     *      unless `randomnessLockedAfterMinted` or `randomnessLockedTimestamp` have been surpassed.
+     *      Used for game mechanics like the Sound Golden Egg.
+     */
+    uint72 private _mintRandomness;
+
+    /**
+     * @dev The royalty fee in basis points.
+     */
+    uint16 public royaltyBPS;
+
+    /**
+     * @dev Packed boolean flags.
+     */
+    uint8 private _flags;
+
+    /** 
+        =============================================================
+                         MODIFIERS
+        =============================================================
+     */
+
+    /**
+     * @dev For operator filtering to be toggled on / off.
+     */
+    function _operatorFilteringEnabled() internal view override returns (bool) {
+        return _flags & OPERATOR_FILTERING_ENABLED_FLAG != 0;
+    }
+
+    /**
+     * @dev Ensures the royalty basis points is a valid value.
+     * @param bps The royalty BPS.
+     */
+    modifier onlyValidRoyaltyBPS(uint16 bps) {
+        if (bps > _MAX_BPS) revert InvalidRoyaltyBPS();
+        _;
+    }
+
+    /**
+     * @dev Ensures that `totalQuantity` can be minted.
+     * @param totalQuantity The total number of tokens to mint.
+     */
+    modifier requireMintable(uint256 totalQuantity) {
+        unchecked {
+            uint256 currentTotalMinted = _totalMinted();
+            uint256 currentEditionMaxMintable = editionMaxMintable();
+            // Check if there are enough tokens to mint.
+            // We use version v4.2+ of ERC721A, which `_mint` will revert with out-of-gas
+            // error via a loop if `totalQuantity` is large enough to cause an overflow in uint256.
+            if (currentTotalMinted + totalQuantity > currentEditionMaxMintable) {
+                // Won't underflow.
+                //
+                // `currentTotalMinted`, which is `_totalMinted()`,
+                // will return either `editionMaxMintableUpper`
+                // or `max(editionMaxMintableLower, _totalMinted())`.
+                //
+                // We have the following invariants:
+                // - `editionMaxMintableUpper >= _totalMinted()`
+                // - `max(editionMaxMintableLower, _totalMinted()) >= _totalMinted()`
+                uint256 available = currentEditionMaxMintable - currentTotalMinted;
+                revert ExceedsEditionAvailableSupply(uint32(available));
+            }
+        }
+        _;
+    }
+
+    /**
+     * @dev Updates the mint randomness.
+     */
+    modifier updatesMintRandomness() {
+        if (mintRandomnessEnabled() && !mintConcluded()) {
+            uint256 randomness = _mintRandomness;
+            uint256 newRandomness = MintRandomnessLib.nextMintRandomness(
+                randomness,
+                _totalMinted(),
+                editionMaxMintable()
+            );
+            if (newRandomness != randomness) {
+                _mintRandomness = uint72(newRandomness);
+            }
+        }
+        _;
+    }
+
+
+    function initialize(
+        string memory name_,
+        string memory symbol_,
+        string memory baseURI_,
+        string memory contractURI_,
+        address payoutAddress_,
+        uint16 royaltyBPS_,
+        uint32 editionMaxMintableLower_,
+        uint32 editionMaxMintableUpper_,
+        uint32 editionCutoffTime_,
+        uint8 flags_
+    ) external onlyValidRoyaltyBPS(royaltyBPS_) {
+        // Prevent double initialization.
+        // We can "cheat" here and avoid the initializer modifer to save a SSTORE,
+        // since the `_nextTokenId()` is defined to always return 1.
+        if (_nextTokenId() != 0) revert Unauthorized();
+
+        if (fundingRecipient_ == address(0)) revert InvalidFundingRecipient();
+
+        if (editionMaxMintableLower_ > editionMaxMintableUpper_) revert InvalidEditionMaxMintableRange();
+
+        _initializeNameAndSymbol(name_, symbol_);
+        ERC721AStorage.layout()._currentIndex = _startTokenId();
+
+        _initializeOwner(msg.sender);
+
+        _baseURIStorage.initialize(baseURI_);
+        _contractURIStorage.initialize(contractURI_);
+
+        fundingRecipient = fundingRecipient_;
+        editionMaxMintableUpper = editionMaxMintableUpper_;
+        editionMaxMintableLower = editionMaxMintableLower_;
+        editionCutoffTime = editionCutoffTime_;
+
+        _flags = flags_;
+
+        metadataModule = metadataModule_;
+        royaltyBPS = royaltyBPS_;
+
+        emit SoundEditionInitialized(
+            address(this),
+            name_,
+            symbol_,
+            metadataModule_,
+            baseURI_,
+            contractURI_,
+            fundingRecipient_,
+            royaltyBPS_,
+            editionMaxMintableLower_,
+            editionMaxMintableUpper_,
+            editionCutoffTime_,
+            flags_
+        );
+
+        if (flags_ & OPERATOR_FILTERING_ENABLED_FLAG != 0) {
+            _registerForOperatorFiltering();
+        }
+    }
 
     
 
@@ -304,23 +479,64 @@ contract ERC721DropConsole is IERC721ConsoleDrop, OwnableRoles {
 
     /** 
         =============================================================
-                          PUBLIC VIEW FUNCTIONS
+                          PUBLIC/EXTERNAL VIEW FUNCTIONS
         =============================================================
     */
 
-   function tokenURI(uint256 tokenId)
-        public
-        view
-        override
-        returns (string memory)
-    {
-        if (!_exists(tokenId)) {
-            revert IERC721AUpgradeable.URIQueryForNonexistentToken();
+   function mintRandomness() public view returns (uint256) {
+        if (mintConcluded() && mintRandomnessEnabled()) {
+            return uint256(keccak256(abi.encode(_mintRandomness, address(this))));
         }
-
-        return config.metadataRenderer.tokenURI(tokenId);
+        return 0;
     }
 
+    function editionMaxMintable() public view returns (uint32) {
+        if (block.timestamp < editionCutoffTime) {
+            return editionMaxMintableUpper;
+        } else {
+            return uint32(FixedPointMathLib.max(editionMaxMintableLower, _totalMinted()));
+        }
+    }
+
+    function mintRandomnessEnabled() public view returns (bool) {
+        return _flags & MINT_RANDOMNESS_ENABLED_FLAG != 0;
+    }
+
+    function operatorFilteringEnabled() public view returns (bool) {
+        return _operatorFilteringEnabled();
+    }
+
+    function mintConcluded() public view returns (bool) {
+        return _totalMinted() == editionMaxMintable();
+    }
+
+    function nextTokenId() public view returns (uint256) {
+        return _nextTokenId();
+    }
+
+    function numberMinted(address owner) external view returns (uint256) {
+        return _numberMinted(owner);
+    }
+
+    function totalMinted() public view returns (uint256) {
+        return _totalMinted();
+    }
+
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override(ERC721AUpgradeable, IERC721AUpgradeable)
+        returns (string memory)
+    {
+        if (!_exists(tokenId)) revert URIQueryForNonexistentToken();
+
+        string memory baseURI_ = baseURI();
+        return bytes(baseURI_).length != 0 ? string.concat(baseURI_, _toString(tokenId)) : "";
+    }
+
+    /**
+     * @inheritdoc ISoundEditionV1_1
+     */
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -335,20 +551,127 @@ contract ERC721DropConsole is IERC721ConsoleDrop, OwnableRoles {
             interfaceId == this.supportsInterface.selector;
     }
 
-    function contractURI() external view returns (string memory) {
-        return config.metadataRenderer.contractURI();
+    /**
+     * @inheritdoc IERC2981Upgradeable
+     */
+    function royaltyInfo(
+        uint256, // tokenId
+        uint256 salePrice
+    ) external view override(IERC2981Upgradeable) returns (address fundingRecipient_, uint256 royaltyAmount) {
+        fundingRecipient_ = fundingRecipient;
+        royaltyAmount = (salePrice * royaltyBPS) / _MAX_BPS;
     }
 
-    /// @notice Getter for metadataRenderer contract
-    function metadataRenderer() external view returns (IMetadataRenderer) {
-        return IMetadataRenderer(config.metadataRenderer);
+    /**
+     * @inheritdoc IERC721AUpgradeable
+     */
+    function name() public view override(ERC721AUpgradeable, IERC721AUpgradeable) returns (string memory) {
+        return name_;
     }
+
+    /**
+     * @inheritdoc IERC721AUpgradeable
+     */
+    function symbol() public view override(ERC721AUpgradeable, IERC721AUpgradeable) returns (string memory) {
+        return symbol_;
+    }
+
+    /**
+     * @inheritdoc ISoundEditionV1_1
+     */
+    function baseURI() public view returns (string memory) {
+        return _baseURIStorage.load();
+    }
+
+    /**
+     * @inheritdoc ISoundEditionV1_1
+     */
+    function contractURI() public view returns (string memory) {
+        return _contractURIStorage.load();
+    }
+
+
 
     /** 
         =============================================================
-                         ADMIN CONFIG FUNCTIONS
+                         ADMIN FUNCTIONS
         =============================================================
     */
+
+   /**
+    * @dev params for batch transfer
+    */
+
+   struct batchTransferParams {
+        address recipient;
+        uint256[] tokenIds;
+
+   }
+
+    /**
+     * @dev Batch transfer minted nfts to a single address
+     */
+    function safeBatchTransfer(
+        batchTransferParams memory params
+    ) internal {
+        uint256 length = params.tokenIds.length;
+        IERC721AUpgradeable nftcontract = IERC721AUpgradeable(address.this)
+        for (uint256 i; i < length; ) {
+            uint256 tokenId = tokenIds[i];
+            address owner = erc721Contract.ownerOf(tokenId);
+            erc721Contract.safeTransferFrom(owner, params.recipient, tokenId);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @dev Batch transfer to multiple nft
+     */
+    function safeBatchTransferPublic(
+        batchTransferParams[] memory params
+    ) external
+      onlyRolesOrOwner(ADMIN_ROLE) {
+        uint256 length = params.length;
+        IERC721AUpgradeable nftcontract = IERC721AUpgradeable(address.this)
+        for (uint256 i; i < length; ) {
+            safeBatchTransferToSingleWallet(params[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice Allows a collection admin to reveal the collection's final content.
+     * @dev Once revealed, the collection's content is immutable.
+     * Use `updatePreRevealContent` to update content while unrevealed.
+     * @param baseURI_ The base URI of the final content for this collection.
+     */
+    function reveal(string calldata baseURI_) external onlyAdmin validBaseURI(baseURI_) onlyWhileUnrevealed {
+        isRevealed = true;
+
+        // Set the new base URI.
+        baseURI = baseURI_;
+        emit URIUpdated(baseURI_, true);
+    }
+
+    /**
+     * @notice Allows a collection admin to update the pre-reveal content.
+     * @dev Use `reveal` to reveal the final content for this collection.
+     * @param baseURI_ The base URI of the pre-reveal content.
+     */
+    function updatePreRevealContent(string calldata baseURI_)
+        external
+        validBaseURI(baseURI_)
+        onlyWhileUnrevealed
+        onlyAdmin
+    {
+        baseURI = baseURI_;
+        emit URIUpdated(baseURI_, false);
+    }
+
 
 
     function setOwner(address newOwner) public onlyOwnerOrRoles(ADMIN_ROLE) {
@@ -383,20 +706,22 @@ contract ERC721DropConsole is IERC721ConsoleDrop, OwnableRoles {
         emit OperatorFilteringEnablededSet(operatorFilteringEnabled_);
     }
 
-    function setPublicSaleConfig() public onlyOwnerOrRoles(ADMIN_ROLE) {}
+     /**
+     * @dev Overrides the `_startTokenId` function from ERC721A
+     *      to start at token id `1`.
+     *
+     *      This is to avoid future possible problems since `0` is usually
+     *      used to signal values that have not been set or have been removed.
+     */
+    function _startTokenId() internal view virtual override returns (uint256) {
+        return 1;
+    }
 
 
 
    
 
-
-
-
-    /** 
-        =============================================================
-                         MODIFIERS
-        =============================================================
-    */
+   
 
 
 
