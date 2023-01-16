@@ -6,7 +6,6 @@ pragma solidity ^0.8.17;
  * @author https://github.com/chirag-bgh
  */
 interface IConsoleFeeManager {
-
     /**
      * @dev Emitted when the `consoleFeeAddress` is changed.
      */
@@ -20,7 +19,7 @@ interface IConsoleFeeManager {
     /**
      * @dev The new `consoleFeeAddress` must not be address(0).
      */
-    error InvalidSoundFeeAddress();
+    error InvalidConsoleFeeAddress();
 
     /**
      * @dev The platform fee numerator must not exceed `_MAX_BPS`.
@@ -48,6 +47,12 @@ interface IConsoleFeeManager {
     function setPlatformFeeBPS(uint16 platformFeeBPS_) external;
 
     /**
+    
+     */
+
+    function getConsoleFeeManager() external view returns (address);
+
+    /**
      * @dev The protocol's address that receives platform fees.
      * @return The configured value.
      */
@@ -64,5 +69,8 @@ interface IConsoleFeeManager {
      * @param requiredEtherValue The required Ether value for payment.
      * @return fee The computed value.
      */
-    function platformFee(uint128 requiredEtherValue) external view returns (uint128 fee);
+    function platformFee(uint128 requiredEtherValue)
+        external
+        view
+        returns (uint128 fee);
 }

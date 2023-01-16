@@ -8,6 +8,6 @@ erc721a/=lib/closedsea/lib/erc721a/contracts/
 forge-std/=lib/forge-std/src/
 openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
-operator-filter-registry/=lib/closedsea/lib/operator-filter-registry/src/
+operator-filter-registry/=lib/closedsea/src/
 solady/=lib/solady/src/
 solmate/=lib/solmate/src/

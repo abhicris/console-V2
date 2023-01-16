@@ -9,6 +9,7 @@ import { IConsoleFeeManager } from "./interfaces/IConsoleFeeManager.sol";
  * @title ConsoleFeeManager
  * @author https://github.com/chirag-bgh
  */
+ 
 contract ConsoleFeeManager is IConsoleFeeManager, OwnableRoles {
    
     /**
@@ -18,12 +19,12 @@ contract ConsoleFeeManager is IConsoleFeeManager, OwnableRoles {
     /**
      * @dev The protocol's address that receives platform fees.
      */
-    address public override consoleFeeAddress;
+    address public consoleFeeAddress;
 
     /**
      * @dev The numerator of the platform fee.
      */
-    uint16 public override platformFeeBPS;
+    uint16 public platformFeeBPS;
 
     constructor(address consoleFeeAddress_, uint16 platformFeeBPS_)
         onlyValidConsoleFeeAddress(consoleFeeAddress_)
@@ -41,7 +42,7 @@ contract ConsoleFeeManager is IConsoleFeeManager, OwnableRoles {
         onlyValidConsoleFeeAddress(consoleFeeAddress_)
     {
         consoleFeeAddress = consoleFeeAddress_;
-        emit consoleFeeAddressSet(consoleFeeAddress_);
+        emit ConsoleFeeAddressSet(consoleFeeAddress_);
     }
 
     function setPlatformFeeBPS(uint16 platformFeeBPS_) external onlyOwner onlyValidPlatformFeeBPS(platformFeeBPS_) {
@@ -56,6 +57,10 @@ contract ConsoleFeeManager is IConsoleFeeManager, OwnableRoles {
         }
     }
 
+    function getConsoleFeeManager() public view returns (address) {
+        return consoleFeeAddress;
+    }
+    
     /**
      * @dev Restricts the Console fee address to be address(0).
      * @param consoleFeeAddress_ The Console fee address.
