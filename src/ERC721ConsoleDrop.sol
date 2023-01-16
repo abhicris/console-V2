@@ -726,6 +726,7 @@ contract ERC721DropConsole is
      * @param interfaceId The interface id to check.
      * @return Whether the `interfaceId` is supported.
      */
+    
     // function supportsInterface(bytes4 interfaceId)
     //     public
     //     view
@@ -735,8 +736,7 @@ contract ERC721DropConsole is
     //     return
     //         interfaceId == type(IERC721ConsoleDrop).interfaceId ||
     //         ERC721AUpgradeable.supportsInterface(interfaceId) ||
-    //         interfaceId == _INTERFACE_ID_ERC2981;
-            
+    //         interfaceId == _INTERFACE_ID_ERC2981;  
     // }
 
     /**
