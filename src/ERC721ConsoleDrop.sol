@@ -5,7 +5,7 @@ pragma solidity ^0.8.17;
 import {ERC721AUpgradeable, ERC721AStorage} from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 import {IERC721AUpgradeable} from "ERC721A-Upgradeable/IERC721AUpgradeable.sol";
 import {OperatorFilterer} from "operator-filter-registry/OperatorFilterer.sol";
-import {IERC2981Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
+import {IERC2981Upgradeable, IERC165Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import {MerkleProofUpgradeable} from "openzeppelin-contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
@@ -59,6 +59,8 @@ contract ERC721DropConsole is
      * @dev The interface ID for EIP-2981 (royaltyInfo)
      */
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+
+    bytes4 private constant _INTERFACE_ID_SOUND_EDITION_V1 = 0x50899e54;
 
     /**
      * @dev The boolean flag on whether the metadata is frozen.
@@ -338,43 +340,43 @@ contract ERC721DropConsole is
         _mint(msg.sender, quantity);
         uint256 firstMintedTokenId = _nextTokenId();
 
-        // emit IERC721Drop.Sale({
-        //     to: msg.sender,
-        //     quantity: quantity,
-        //     pricePerToken: pricePerToken,
-        //     firstPurchasedTokenId: firstMintedTokenId
-        // });
+        emit IERC721ConsoleDrop.Sale({
+            to: msg.sender,
+            quantity: quantity,
+            pricePerToken: pricePerToken,
+            firstPurchasedTokenId: firstMintedTokenId
+        });
 
         return firstMintedTokenId;
     }
 
-    // /// @dev This sets the sales configuration
-    // /// @param publicSalePrice New public sale price
-    // /// @param maxSalePurchasePerAddress Max # of purchases (public) per address allowed
-    // /// @param publicSaleStart unix timestamp when the public sale starts
-    // /// @param publicSaleEnd unix timestamp when the public sale ends (set to 0 to disable)
-    // /// @param presaleStart unix timestamp when the presale starts
-    // /// @param presaleEnd unix timestamp when the presale ends
-    // /// @param presaleMerkleRoot merkle root for the presale information
-    // function setSaleConfiguration(
-    //     uint104 publicSalePrice,
-    //     uint32 maxSalePurchasePerAddress,
-    //     uint64 publicSaleStart,
-    //     uint64 publicSaleEnd,
-    //     uint64 presaleStart,
-    //     uint64 presaleEnd,
-    //     bytes32 presaleMerkleRoot
-    // ) external onlyRolesOrOwner(ADMIN_ROLE) {
-    //     salesConfig.publicSalePrice = publicSalePrice;
-    //     salesConfig.maxSalePurchasePerAddress = maxSalePurchasePerAddress;
-    //     salesConfig.publicSaleStart = publicSaleStart;
-    //     salesConfig.publicSaleEnd = publicSaleEnd;
-    //     salesConfig.presaleStart = presaleStart;
-    //     salesConfig.presaleEnd = presaleEnd;
-    //     salesConfig.presaleMerkleRoot = presaleMerkleRoot;
+    /// @dev This sets the sales configuration
+    /// @param publicSalePrice New public sale price
+    /// @param maxSalePurchasePerAddress Max # of purchases (public) per address allowed
+    /// @param publicSaleStart unix timestamp when the public sale starts
+    /// @param publicSaleEnd unix timestamp when the public sale ends (set to 0 to disable)
+    /// @param presaleStart unix timestamp when the presale starts
+    /// @param presaleEnd unix timestamp when the presale ends
+    /// @param presaleMerkleRoot merkle root for the presale information
+    function setSaleConfiguration(
+        uint104 publicSalePrice,
+        uint32 maxSalePurchasePerAddress,
+        uint64 publicSaleStart,
+        uint64 publicSaleEnd,
+        uint64 presaleStart,
+        uint64 presaleEnd,
+        bytes32 presaleMerkleRoot
+    ) external onlyRolesOrOwner(ADMIN_ROLE) {
+        salesConfig.publicSalePrice = publicSalePrice;
+        salesConfig.maxSalePurchasePerAddress = maxSalePurchasePerAddress;
+        salesConfig.publicSaleStart = publicSaleStart;
+        salesConfig.publicSaleEnd = publicSaleEnd;
+        salesConfig.presaleStart = presaleStart;
+        salesConfig.presaleEnd = presaleEnd;
+        salesConfig.presaleMerkleRoot = presaleMerkleRoot;
 
-    //     emit SalesConfigChanged(msg.sender);
-    // }
+        emit SalesConfigChanged(msg.sender);
+    }
 
     /** 
         =============================================================
@@ -480,11 +482,25 @@ contract ERC721DropConsole is
         emit URIUpdated(baseURI_, false);
     }
 
-    // function setContractURI(string memory contractURI_) external onlyRolesOrOwner(ADMIN_ROLE) onlyMetadataNotFrozen {
-    //     _contractURIStorage.update(contractURI_);
+    function setContractURI(string memory contractURI_)
+        external
+        onlyRolesOrOwner(ADMIN_ROLE)
+        onlyMetadataNotFrozen
+    {
+        contractURIStorage = contractURI_;
 
-    //     emit ContractURISet(contractURI_);
-    // }
+        emit ContractURISet(contractURI_);
+    }
+
+    function setBaseURI(string memory contractURI_)
+        external
+        onlyRolesOrOwner(ADMIN_ROLE)
+        onlyMetadataNotFrozen
+    {
+        baseURIStorage = contractURI_;
+
+        emit BaseURISet(contractURI_);
+    }
 
     /**
      * @dev frezzes metadata
@@ -524,7 +540,7 @@ contract ERC721DropConsole is
      */
     function setApprovalForAll(address operator, bool approved)
         public
-        override(ERC721AUpgradeable, IERC721AUpgradeable)
+        override(IERC721ConsoleDrop, ERC721AUpgradeable)
         onlyAllowedOperatorApproval(operator)
     {
         super.setApprovalForAll(operator, approved);
@@ -536,7 +552,7 @@ contract ERC721DropConsole is
     function approve(address operator, uint256 tokenId)
         public
         payable
-        override(ERC721AUpgradeable, IERC721AUpgradeable)
+        override(ERC721AUpgradeable)
         onlyAllowedOperatorApproval(operator)
     {
         super.approve(operator, tokenId);
@@ -549,12 +565,7 @@ contract ERC721DropConsole is
         address from,
         address to,
         uint256 tokenId
-    )
-        public
-        payable
-        override(ERC721AUpgradeable, IERC721AUpgradeable)
-        onlyAllowedOperator(from)
-    {
+    ) public payable override(ERC721AUpgradeable) onlyAllowedOperator(from) {
         super.transferFrom(from, to, tokenId);
     }
 
@@ -565,12 +576,7 @@ contract ERC721DropConsole is
         address from,
         address to,
         uint256 tokenId
-    )
-        public
-        payable
-        override(ERC721AUpgradeable, IERC721AUpgradeable)
-        onlyAllowedOperator(from)
-    {
+    ) public payable override(ERC721AUpgradeable) onlyAllowedOperator(from) {
         super.safeTransferFrom(from, to, tokenId);
     }
 
@@ -582,12 +588,7 @@ contract ERC721DropConsole is
         address to,
         uint256 tokenId,
         bytes memory data
-    )
-        public
-        payable
-        override(ERC721AUpgradeable, IERC721AUpgradeable)
-        onlyAllowedOperator(from)
-    {
+    ) public payable override(ERC721AUpgradeable) onlyAllowedOperator(from) {
         super.safeTransferFrom(from, to, tokenId, data);
     }
 
@@ -708,7 +709,7 @@ contract ERC721DropConsole is
     function tokenURI(uint256 tokenId)
         public
         view
-        override(ERC721AUpgradeable, IERC721AUpgradeable)
+        override(ERC721AUpgradeable)
         returns (string memory)
     {
         if (!_exists(tokenId)) revert URIQueryForNonexistentToken();
@@ -726,31 +727,25 @@ contract ERC721DropConsole is
      * @param interfaceId The interface id to check.
      * @return Whether the `interfaceId` is supported.
      */
-    
-    // function supportsInterface(bytes4 interfaceId)
-    //     public
-    //     view
-    //     override(IERC165Upgradeable, ERC721AUpgradeable, IERC721AUpgradeable)
-    //     returns (bool)
-    // {
-    //     return
-    //         interfaceId == type(IERC721ConsoleDrop).interfaceId ||
-    //         ERC721AUpgradeable.supportsInterface(interfaceId) ||
-    //         interfaceId == _INTERFACE_ID_ERC2981;  
-    // }
 
-    /**
-     * @inheritdoc IERC2981Upgradeable
-     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721AUpgradeable)
+        returns (bool)
+    {
+        return
+            interfaceId == _INTERFACE_ID_SOUND_EDITION_V1 ||
+            interfaceId == type(IERC721ConsoleDrop).interfaceId ||
+            ERC721AUpgradeable.supportsInterface(interfaceId) ||
+            interfaceId == _INTERFACE_ID_ERC2981 ||
+            interfaceId == this.supportsInterface.selector;
+    }
+
     function royaltyInfo(
         uint256, // tokenId
         uint256 salePrice
-    )
-        external
-        view
-        override(IERC2981Upgradeable)
-        returns (address fundingRecipient_, uint256 royaltyAmount)
-    {
+    ) external view returns (address fundingRecipient_, uint256 royaltyAmount) {
         fundingRecipient_ = payoutAddress;
         royaltyAmount = (salePrice * royaltyBPS) / _MAX_BPS;
     }
@@ -761,7 +756,7 @@ contract ERC721DropConsole is
     function name()
         public
         view
-        override(ERC721AUpgradeable, IERC721AUpgradeable)
+        override(ERC721AUpgradeable)
         returns (string memory)
     {
         (string memory name_, ) = _loadNameAndSymbol();
@@ -774,7 +769,7 @@ contract ERC721DropConsole is
     function symbol()
         public
         view
-        override(ERC721AUpgradeable, IERC721AUpgradeable)
+        override(ERC721AUpgradeable)
         returns (string memory)
     {
         (, string memory symbol_) = _loadNameAndSymbol();
