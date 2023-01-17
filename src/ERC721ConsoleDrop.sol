@@ -60,7 +60,7 @@ contract ERC721DropConsole is
      */
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
-    bytes4 private constant _INTERFACE_ID_SOUND_EDITION_V1 = 0x50899e54;
+    bytes4 private constant _INTERFACE_ID_CONSOLEDROP = 0xe1b3426d;
 
     /**
      * @dev The boolean flag on whether the metadata is frozen.
@@ -735,7 +735,7 @@ contract ERC721DropConsole is
         returns (bool)
     {
         return
-            interfaceId == _INTERFACE_ID_SOUND_EDITION_V1 ||
+            interfaceId == _INTERFACE_ID_CONSOLEDROP ||
             interfaceId == type(IERC721ConsoleDrop).interfaceId ||
             ERC721AUpgradeable.supportsInterface(interfaceId) ||
             interfaceId == _INTERFACE_ID_ERC2981 ||
