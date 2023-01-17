@@ -37,7 +37,7 @@ contract DropProxyFactory is IDropProxyFactory, OwnableRoles {
      * @param contracts A list of contracts to call.
      * @param data      A list of calldata created via `abi.encodeWithSelector`
      *                  This must contain the same number of entries as `contracts`.
-     * @return soundEdition Returns the address of the created contract.
+     * @return consoleDrop Returns the address of the created contract.
      * @return results      The results of calling the contracts.
      *                      Use `abi.decode` to decode them.
      */
@@ -109,6 +109,30 @@ contract DropProxyFactory is IDropProxyFactory, OwnableRoles {
         dropImplementation = newImplementation;
 
         emit ImplementationSet(dropImplementation);
+    }
+
+    // =============================================================
+    //               PUBLIC / EXTERNAL VIEW FUNCTIONS
+    // =============================================================
+
+    /**
+     * @dev Returns the deterministic address for the consoleDrop clone.
+     * @param by   The caller of the {createDrop} function.
+     * @param salt The salt, generated on the client side.
+     * @return addr The computed address.
+     * @return exists Whether the contract exists.
+     */
+    function consoleDropAddress(address by, bytes32 salt)
+        external
+        view
+        returns (address addr, bool exists)
+    {
+        addr = Clones.predictDeterministicAddress(
+            dropImplementation,
+            _saltedSalt(by, salt),
+            address(this)
+        );
+        exists = addr.code.length > 0;
     }
 
     // =============================================================

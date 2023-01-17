@@ -58,13 +58,7 @@ interface IDropProxyFactory {
      */
     function dropImplementation() external returns (address);
 
-    /**
-     * @dev Returns the deterministic address for the consoleDrop clone.
-     * @param by   The caller of the {createDrop} function.
-     * @param salt The salt, generated on the client side.
-     * @return addr The computed address.
-     * @return exists Whether the contract exists.
-     */
+    
     function consoleDropAddress(address by, bytes32 salt)
         external
         view
