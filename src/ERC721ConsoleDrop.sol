@@ -18,14 +18,14 @@ import {IERC721ConsoleDrop} from "./interfaces/IERC721ConsoleDrop.sol";
 import {IConsoleFeeManager} from "./interfaces/IConsoleFeeManager.sol";
 
 /**
- * @title ERC721DropConsole
+ * @title ERC721ConsoleDrop
  * @notice NFT Implementation cotract for console.createprotocol.org
  * @dev For drops: assumes 1. linear mint order, 2. max number of mints needs to be less than max_uint64
  *       (if you have more than 18 quintillion linear mints you should probably not be using this contract)
  * @author https://github.com/chirag-bgh
  */
 
-contract ERC721DropConsole is
+contract ERC721ConsoleDrop is
     ERC721AUpgradeable,
     IERC721ConsoleDrop,
     OwnableRoles,
@@ -114,7 +114,6 @@ contract ERC721DropConsole is
     /**
      * @dev The randomness based on latest block hash, which is stored upon each mint
      *      unless `randomnessLockedAfterMinted` or `randomnessLockedTimestamp` have been surpassed.
-     *      Used for game mechanics like the Sound Golden Egg.
      */
     uint72 private _mintRandomness;
 

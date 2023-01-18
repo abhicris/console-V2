@@ -28,11 +28,11 @@ contract DropProxyFactory is IDropProxyFactory, OwnableRoles {
     // =============================================================
 
     /**
-     * @dev Creates a Sound Edition proxy, initializes it,
+     * @dev Creates a  ConsoleDrop proxy, initializes it,
      *      and creates mint configurations on a given set of minter addresses.
      * @param salt      The salt used for the CREATE2 to deploy the clone to a
      *                  deterministic address.
-     * @param initData  The calldata to initialize SoundEdition via
+     * @param initData  The calldata to initialize ConsoleDrop via
      *                  `abi.encodeWithSelector`.
      * @param contracts A list of contracts to call.
      * @param data      A list of calldata created via `abi.encodeWithSelector`
@@ -94,7 +94,7 @@ contract DropProxyFactory is IDropProxyFactory, OwnableRoles {
     }
 
     /**
-     * @dev Changes the SoundEdition implementation contract address.
+     * @dev Changes the ConsoleDrop implementation contract address.
      *
      * Calling conditions:
      * - The caller must be the owner of the contract.

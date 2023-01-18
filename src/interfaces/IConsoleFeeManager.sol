@@ -32,7 +32,7 @@ interface IConsoleFeeManager {
      * Calling conditions:
      * - The caller must be the owner of the contract.
      *
-     * @param consoleFeeAddress_ The sound fee address.
+     * @param consoleFeeAddress_ The console fee address.
      */
     function setConsoleFeeAddress(address consoleFeeAddress_) external;
 
