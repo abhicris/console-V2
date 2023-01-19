@@ -40,4 +40,30 @@ contract TestDropProxyFactory is TestConfig {
             address(dropImplementation)
         );
     }
+
+    // Tests that the factory creates a new proxy from CnosleDrop Implementation
+    function test_createConsoleDrop() public {
+        ERC721ConsoleDrop consoleDrop = createGenericEdition();
+
+        assert(address(consoleDrop) != address(0));
+        assertEq(consoleDrop.name(), NAME);
+        assertEq(consoleDrop.symbol(), SYMBOL);
+    }
+
+    function test_createSoundRevertsOnDoubleInitialization() public {
+        ERC721ConsoleDrop consoleDrop = createGenericEdition();
+        vm.expectRevert(0x82b42900);
+        consoleDrop.initialize(
+            NAME,
+            SYMBOL,
+            BASE_URI,
+            CONTRACT_URI,
+            PAYOUT_ADDRESS,
+            ROYALTY_BPS,
+            SALES_CONFIG,
+            EDITION_MAX_MINTABLE,
+            FLAGS,
+            IConsoleFeeManager(CONSOLE_FEE_ADDRESS)
+        );
+    }
 }

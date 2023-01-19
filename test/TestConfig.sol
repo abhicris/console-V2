@@ -4,12 +4,11 @@ pragma solidity 0.8.17;
 import {Test} from "forge-std/Test.sol";
 
 import {DropProxyFactory} from "../src/DropProxyFactory.sol";
-import {ERC721ConsoleDrop} from "../src/ERC721ConsoleDrop.sol";
+import {ERC721ConsoleDrop, IERC721ConsoleDrop} from "../src/ERC721ConsoleDrop.sol";
 import {ConsoleFeeManager, IConsoleFeeManager} from "../src/ConsoleFeeManager.sol";
 import {MockConsoleDrop} from "./mocks/MockConsoleDrop.sol";
 
 contract TestConfig is Test {
-
     uint8 public constant METADATA_IS_FROZEN_FLAG = 1 << 0;
     uint8 public constant MINT_RANDOMNESS_ENABLED_FLAG = 1 << 1;
 
@@ -26,28 +25,8 @@ contract TestConfig is Test {
     uint16 constant PLATFORM_FEE_BPS = 500;
     uint256 constant MAX_BPS = 10_000;
 
-    struct SalesConfiguration {
-        /// @dev Public sale price (max ether value > 1000 ether with this value)
-        uint104 publicSalePrice;
-        /// @notice Purchase mint limit per address (if set to 0 === unlimited mints)
-        /// @dev Max purchase number per txn (90+32 = 122)
-        uint32 maxSalePurchasePerAddress;
-        /// @dev uint64 type allows for dates into 292 billion years
-        /// @notice Public sale start timestamp (136+64 = 186)
-        uint64 publicSaleStart;
-        /// @notice Public sale end timestamp (186+64 = 250)
-        uint64 publicSaleEnd;
-        /// @notice Presale start timestamp
-        /// @dev new storage slot
-        uint64 presaleStart;
-        /// @notice Presale end timestamp
-        uint64 presaleEnd;
-        /// @notice Presale merkle root
-        bytes32 presaleMerkleRoot;
-    }
-
-    SalesConfiguration public SALES_CONFIG =
-        SalesConfiguration({
+    IERC721ConsoleDrop.SalesConfiguration public SALES_CONFIG =
+        IERC721ConsoleDrop.SalesConfiguration({
             publicSaleStart: 0,
             publicSaleEnd: 0,
             presaleStart: 0,
@@ -95,7 +74,7 @@ contract TestConfig is Test {
         string memory contractURI_,
         address payoutAddress_,
         uint16 royaltyBPS_,
-        SalesConfiguration memory _salesconfig,
+        IERC721ConsoleDrop.SalesConfiguration memory _salesconfig,
         uint32 editionMaxMintable_,
         uint8 flags_,
         IConsoleFeeManager consoleFeeManager_
