@@ -36,7 +36,7 @@ contract TestDropProxyFactory is TestConfig {
 
         assert(address(_dropProxyFactory) != address(0));
         assertEq(
-            address(_dropProxyFactory.consoleDropImplementation()),
+            address(_dropProxyFactory.dropImplementation()),
             address(dropImplementation)
         );
     }

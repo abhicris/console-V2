@@ -5,7 +5,7 @@ import "./TestConfig.sol";
 import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
 import {ConsoleFeeManager, IConsoleFeeManager} from "../src/ConsoleFeeManager.sol";
 
-contract TestConsoleFeeManger is TestConfig, OwnableRoles {
+contract TestConsoleFeeManger is TestConfig {
     event ConsoleFeeAddressSet(address consoleFeeAddress);
 
     event PlatformFeeSet(uint16 platformFeeBPS);
@@ -44,7 +44,7 @@ contract TestConsoleFeeManger is TestConfig, OwnableRoles {
     function test_setConsoleFeeAddressRevertsForNonOwner() external {
         address caller = getFundedAccount(1);
         vm.prank(caller);
-        vm.expectRevert(OwnableRoles.Unauthorized.selector);
+        vm.expectRevert(0x82b42900);
         feeManager.setConsoleFeeAddress(address(10));
     }
 
@@ -72,7 +72,7 @@ contract TestConsoleFeeManger is TestConfig, OwnableRoles {
     function test_setPlatformFeeBPSRevertsForNonOwner() external {
         address caller = getFundedAccount(1);
         vm.prank(caller);
-        vm.expectRevert(OwnableRoles.Unauthorized.selector);
+        vm.expectRevert(0x82b42900);
         feeManager.setPlatformFeeBPS(10);
     }
 
