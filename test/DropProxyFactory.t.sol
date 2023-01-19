@@ -42,7 +42,7 @@ contract TestDropProxyFactory is TestConfig {
     }
 
     // Tests that the factory creates a new proxy from CnosleDrop Implementation
-    function test_createConsoleDrop() public {
+    function test_createDrop() public {
         ERC721ConsoleDrop consoleDrop = createGenericEdition();
 
         assert(address(consoleDrop) != address(0));
@@ -50,7 +50,7 @@ contract TestDropProxyFactory is TestConfig {
         assertEq(consoleDrop.symbol(), SYMBOL);
     }
 
-    function test_createSoundRevertsOnDoubleInitialization() public {
+    function test_createDropRevertsOnDoubleInitialization() public {
         ERC721ConsoleDrop consoleDrop = createGenericEdition();
         vm.expectRevert(0x82b42900);
         consoleDrop.initialize(
