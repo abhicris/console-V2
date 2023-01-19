@@ -17,7 +17,7 @@ contract TestConfig is Test {
     string constant SYMBOL = "CR8";
     string constant BASE_URI = "https://example.com/metadata/";
     string constant CONTRACT_URI = "https://example.com/storefront/";
-    address constant PAYOUT_ADDRESS = address(99);
+    address PAYOUT_ADDRESS = makeAddr("payoutaddress");
     uint16 constant ROYALTY_BPS = 100;
     address public constant ARTIST_ADMIN = address(8888888888);
     uint32 constant EDITION_MAX_MINTABLE = type(uint32).max;
@@ -35,7 +35,7 @@ contract TestConfig is Test {
             maxSalePurchasePerAddress: 0,
             presaleMerkleRoot: bytes32(0)
         });
-    address constant CONSOLE_FEE_ADDRESS = address(2222222222);
+    address CONSOLE_FEE_ADDRESS = makeAddr("ConsoleFeeAddress");
 
     uint256 internal _salt;
 
